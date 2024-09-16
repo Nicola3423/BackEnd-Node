@@ -1,23 +1,34 @@
 const express = require('express');
 const app = express();
+const PORT = 3000;
 
-const PORT = process.env.PORT || 3000;
-
-app.get('/hello', (req, res) => {
-   res.send('Projeto BanckEnd');
-});
+app.use(express.json());
 
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('lista-tarefas.db');
 
 db.serialize(() => {
-   db.run("CREATE TABLE IF NOT EXISTS tarefas (id INTEGER PRIMARY KEY, tarefa TEXT)");
+    db.run("CREATE TABLE IF NOT EXISTS tarefas (id INTEGER PRIMARY KEY, tarefa TEXT)");
 });
 
-app.listen(PORT, () => {
-   console.log(`O servidor esta rodando na porta: ${PORT}`);
+app.post('/tarefas', (req, res) => {
+   const { tarefa } = req.body;
+   db.run("INSERT INTO tarefas (tarefa) VALUES (?)", [tarefa], function(err) {
+       if (err) {
+           return res.status(500).json({ error: err.message });
+       }
+       res.status(201).json({ id: this.lastID, tarefa });
+   });
 });
 
+app.get('/tarefas', (req, res) => {
+   db.all("SELECT * FROM tarefas", [], (err, rows) => {
+       if (err) {
+           return res.status(500).json({ error: err.message });
+       }
+       res.status(200).json(rows);
+   });
+});
 
 app.get('/tarefas/:id', (req, res) => {
    const { id } = req.params;
@@ -48,17 +59,6 @@ app.put('/tarefas/:id', (req, res) => {
    });
 });
 
-app.post('/tarefas', (req, res) => {
-   const { tarefa } = req.body;
-   db.run("INSERT INTO tarefas (tarefa) VALUES (?)", [tarefa], function(err) {
-       if (err) {
-           return res.status(500).json({ error: err.message });
-       }
-       res.status(201).json({ id: this.lastID, tarefa });
-   });
-});
-
-
 app.delete('/tarefas/:id', (req, res) => {
    const { id } = req.params;
    db.run("DELETE FROM tarefas WHERE id = ?", [id], function(err) {
@@ -73,11 +73,6 @@ app.delete('/tarefas/:id', (req, res) => {
    });
 });
 
-app.get('/tarefas', (req, res) => {
-   db.all("SELECT * FROM tarefas", [], (err, rows) => {
-       if (err) {
-           return res.status(500).json({ error: err.message });
-       }
-       res.status(200).json(rows);
-   });
+app.listen(PORT, () => {
+   console.log(`Server is running on port ${PORT}`);
 });
